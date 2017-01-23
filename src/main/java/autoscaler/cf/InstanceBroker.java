@@ -19,6 +19,8 @@ import org.cloudfoundry.operations.DefaultCloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.ScaleApplicationRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -38,8 +40,11 @@ public class InstanceBroker {
 	private Integer minInstances;
 	@Value("${scale.maxInstances}")
 	private Integer maxInstances;
+
 	@Autowired
 	private DefaultCloudFoundryOperations cfOps;
+
+	private final static Logger LOGGER = LoggerFactory.getLogger(InstanceBroker.class);
 
 	/**
 	 * Increments the number of instances of the App by 1.
@@ -48,6 +53,9 @@ public class InstanceBroker {
 		Integer currentInstances = getInstanceCount();
 		if (currentInstances < maxInstances) {
 			cfOps.applications().scale(ScaleApplicationRequest.builder().name(appName).instances(getInstanceCount() + 1).build());
+			LOGGER.info(String.format("Incremented App Count to %s", currentInstances));
+		} else {
+			LOGGER.info(String.format("Upper limit of %s Instances Reached. Could not scale up.", maxInstances));
 		}
 	}
 
@@ -58,6 +66,9 @@ public class InstanceBroker {
 		Integer currentInstances = getInstanceCount();
 		if (currentInstances > minInstances) {
 			cfOps.applications().scale(ScaleApplicationRequest.builder().name(appName).instances(getInstanceCount() - 1).build());
+			LOGGER.info(String.format("Decremented App Count to %s", currentInstances));
+		} else {
+			LOGGER.info(String.format("Lower limit of %s Instances Reached. Could not scale down.", maxInstances));
 		}
 	}
 
@@ -68,6 +79,7 @@ public class InstanceBroker {
 	 */
 	private Integer getInstanceCount() {
 		ApplicationDetail appDetails = cfOps.applications().get(GetApplicationRequest.builder().name(appName).build()).block();
+		LOGGER.info(String.format("Checked current Instance Count, was %s", appDetails.getInstances()));
 		return appDetails.getInstances();
 	}
 }

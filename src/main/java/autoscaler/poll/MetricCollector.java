@@ -16,6 +16,8 @@
 package autoscaler.poll;
 
 import org.joda.time.DateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -39,6 +41,8 @@ public class MetricCollector {
 	@Autowired
 	private InstanceBroker instanceBroker;
 
+	private final static Logger LOGGER = LoggerFactory.getLogger(MetricCollector.class);
+
 	/**
 	 * Records the data from a poll of a Piazza Service Job queue, and determines if scaling is appropriate.
 	 * 
@@ -50,10 +54,14 @@ public class MetricCollector {
 	public void onMetricGathered(DateTime dateTime, Integer jobCount) {
 		if (jobCount > jobHighThreshold) {
 			// Do we need to scale up?
+			LOGGER.info(String.format("Initiating Scale Up, Job count was %s", jobCount));
 			instanceBroker.increment();
 		} else if (jobCount < jobLowThreshold) {
 			// Do we need to scale down?
+			LOGGER.info(String.format("Initiating Scale Down, Job count was %s", jobCount));
 			instanceBroker.decrement();
+		} else {
+			LOGGER.info(String.format("No scaling necessary, Job count was %s", jobCount));
 		}
 	}
 }

@@ -22,6 +22,8 @@ import java.util.TimerTask;
 import javax.annotation.PostConstruct;
 
 import org.joda.time.DateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -46,6 +48,7 @@ public class Pollster {
 
 	private PollServiceTask pollTask = new PollServiceTask();
 	private Timer pollTimer = new Timer();
+	private final static Logger LOGGER = LoggerFactory.getLogger(Pollster.class);
 
 	/**
 	 * Begins scheduled polling of Service Metadata
@@ -54,6 +57,7 @@ public class Pollster {
 	public void startPolling() {
 		// Begin polling at the determined frequency after a short delay
 		pollTimer.schedule(pollTask, 5000, intervalSeconds * 1000);
+		LOGGER.info("Begin polling for Service Jobs.");
 	}
 
 	/**
@@ -61,6 +65,7 @@ public class Pollster {
 	 */
 	public void stopPolling() {
 		pollTimer.cancel();
+		LOGGER.info("Polling Halted.");
 	}
 
 	/**
@@ -96,13 +101,17 @@ public class Pollster {
 			ParameterizedTypeReference<Map<String, Object>> typeRef = new ParameterizedTypeReference<Map<String, Object>>() {
 			};
 			try {
+				LOGGER.info(String.format("Querying Service Metadata at %s", url));
 				ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.GET, null, typeRef);
 				// Send data to the Metrics Collector
 				metricCollector.onMetricGathered(new DateTime(), Integer.parseInt(response.getBody().get("totalJobCount").toString()));
 			} catch (HttpClientErrorException | HttpServerErrorException exception) {
 				// Handle any HTTP Errors
+				LOGGER.error(String.format("HTTP Error status encountered : %s. Response : was %s", exception.getStatusCode().toString(),
+						exception.getResponseBodyAsString()), exception);
 			} catch (NumberFormatException exception) {
 				// Handle Formatting or Parse errors
+				LOGGER.error(String.format("Error parsing Server response : %s", exception.getMessage()), exception);
 			}
 		}
 	}
