@@ -16,7 +16,11 @@
 package autoscaler.poll;
 
 import org.joda.time.DateTime;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import autoscaler.cf.InstanceBroker;
 
 /**
  * Collects metrics and stores in-memory based on communications with the polled Metadata. Based on this recorded metric
@@ -27,6 +31,14 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class MetricCollector {
+	@Value("${scale.jobHighThreshold}")
+	private Integer jobHighThreshold;
+	@Value("${scale.jobLowThreshold}")
+	private Integer jobLowThreshold;
+
+	@Autowired
+	private InstanceBroker instanceBroker;
+
 	/**
 	 * Records the data from a poll of a Piazza Service Job queue, and determines if scaling is appropriate.
 	 * 
@@ -35,25 +47,13 @@ public class MetricCollector {
 	 * @param jobCount
 	 *            The number of Jobs in the queue at that time.
 	 */
-	public void onMetricGathered(DateTime dateTime, int jobCount) {
-
-	}
-
-	/**
-	 * Based on the metrics, determines if the App requires the instance count to be incremented.
-	 * 
-	 * @return True if increment should occur, false if not
-	 */
-	public boolean doesRequireIncrement() {
-		return false;
-	}
-
-	/**
-	 * Based on the metrics, determines if the App requires the instance count to be decremented.
-	 * 
-	 * @return True if decrement should occur, false if not
-	 */
-	public boolean doesRequireDecrement() {
-		return false;
+	public void onMetricGathered(DateTime dateTime, Integer jobCount) {
+		if (jobCount > jobHighThreshold) {
+			// Do we need to scale up?
+			instanceBroker.increment();
+		} else if (jobCount < jobLowThreshold) {
+			// Do we need to scale down?
+			instanceBroker.decrement();
+		}
 	}
 }
