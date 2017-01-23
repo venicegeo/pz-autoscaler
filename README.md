@@ -1,4 +1,8 @@
-Piazza Autoscaler. Autoscales a Cloud Foundry app based on the number of Jobs in a Piazza Service Jobs Queue.
+#Piazza Autoscaler
+
+This application will autoscale an individual Cloud Foundry App based on the number of Jobs in a Piazza Service Jobs Queue.
+
+##Environment
 
 This application depends on the following variables:
 - cf.apiHost - The API host for Cloud Foundry
@@ -15,3 +19,9 @@ This application depends on the following variables:
 - scale.jobHighThreshold - The upper-limit for number of Jobs in queue before scaling up
 - scale.jobLowThreshold - The lower-limit for number of Jobs in the queue before scaling down
 - scale.intervalSeconds - The number of seconds in between each potential scaling interval check
+
+##Running
+
+`mvn clean install` to build this project.
+
+`mvn spring-boot:run` to run this project. 
