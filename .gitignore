@@ -1,0 +1,10 @@
+.settings
+.classpath
+.project
+target/
+bin/
+.vagrant/
+data/
+tmp/
+tmp*/
+.sonar/

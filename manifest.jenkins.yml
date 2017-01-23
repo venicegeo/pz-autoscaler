@@ -1,0 +1,12 @@
+applications:
+- name: pz-autoscaler
+  host: pz-autoscaler
+  path: pz-autoscaler.jar
+  buildpack: 'https://github.com/cloudfoundry/java-buildpack.git#v3.9'
+  memory: 512M
+  instances: 1
+  timeout: 80
+  services:
+    - pz-mongodb
+  env:
+    SPRING_PROFILES_ACTIVE: cloud
