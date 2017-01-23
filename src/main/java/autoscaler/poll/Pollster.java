@@ -21,12 +21,15 @@ import java.util.TimerTask;
 
 import javax.annotation.PostConstruct;
 
+import org.apache.tomcat.util.codec.binary.Base64;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -43,8 +46,21 @@ import org.springframework.web.client.RestTemplate;
  */
 @Component
 public class Pollster {
+	@Value("${pz.serviceId}")
+	private String serviceId;
+	@Value("${pz.apiKey}")
+	private String apiKey;
+	@Value("${pz.hostUrl}")
+	private String pzHost;
+	@Value("${cf.space}")
+	private String space;
 	@Value("${scale.intervalSeconds}")
 	private Integer intervalSeconds;
+
+	@Autowired
+	private RestTemplate restTemplate;
+	@Autowired
+	private MetricCollector metricCollector;
 
 	private PollServiceTask pollTask = new PollServiceTask();
 	private Timer pollTimer = new Timer();
@@ -69,40 +85,42 @@ public class Pollster {
 	}
 
 	/**
+	 * Gets Auth headers for Piazza Request
+	 * 
+	 * @return Auth Headers
+	 */
+	protected HttpHeaders getGeoServerHeaders() {
+		String plainCredentials = String.format("%s:%s", apiKey, "");
+		byte[] credentialBytes = plainCredentials.getBytes();
+		byte[] encodedCredentials = Base64.encodeBase64(credentialBytes);
+		String credentials = new String(encodedCredentials);
+		HttpHeaders headers = new HttpHeaders();
+		headers.add("Authorization", "Basic " + credentials);
+		return headers;
+	}
+
+	/**
 	 * Repeated Task that will continuously query for the number of Jobs in the Service Queue, and feed those metrics
 	 * into the Collector.
 	 * 
 	 * @author Patrick.Doody
 	 */
-	@Component
 	public class PollServiceTask extends TimerTask {
-		@Value("${pz.serviceId}")
-		private String serviceId;
-		@Value("${pz.apiKey}")
-		private String apiKey;
-		@Value("${pz.hostUrl}")
-		private String pzHost;
-		@Value("${cf.space}")
-		private String space;
-
-		@Autowired
-		private RestTemplate restTemplate;
-		@Autowired
-		private MetricCollector metricCollector;
-
 		/**
 		 * Gets the Service metadata response from Piazza for the bound service. This metadata will contain, at least,
 		 * the number of Jobs in the queue.
 		 */
 		@Override
 		public void run() {
-			// Query Piazza for the Service Metadata
 			String url = String.format("%s/service/%s/task/metadata", pzHost, serviceId);
 			ParameterizedTypeReference<Map<String, Object>> typeRef = new ParameterizedTypeReference<Map<String, Object>>() {
 			};
 			try {
+				// Query Service Metadata Endpoint for Job Count
 				LOGGER.info(String.format("Querying Service Metadata at %s", url));
-				ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.GET, null, typeRef);
+				HttpHeaders headers = getGeoServerHeaders();
+				HttpEntity<Object> request = new HttpEntity<>(headers);
+				ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.GET, request, typeRef);
 				// Send data to the Metrics Collector
 				metricCollector.onMetricGathered(new DateTime(), Integer.parseInt(response.getBody().get("totalJobCount").toString()));
 			} catch (HttpClientErrorException | HttpServerErrorException exception) {
