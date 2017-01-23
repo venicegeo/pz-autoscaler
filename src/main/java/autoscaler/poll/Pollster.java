@@ -92,7 +92,7 @@ public class Pollster {
 		@Override
 		public void run() {
 			// Query Piazza for the Service Metadata
-			String url = String.format("%s/service/%s/metadata", pzHost, serviceId);
+			String url = String.format("%s/service/%s/task/metadata", pzHost, serviceId);
 			ParameterizedTypeReference<Map<String, Object>> typeRef = new ParameterizedTypeReference<Map<String, Object>>() {
 			};
 			try {
