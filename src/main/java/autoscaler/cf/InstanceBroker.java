@@ -52,7 +52,7 @@ public class InstanceBroker {
 	public void increment() {
 		Integer currentInstances = getInstanceCount();
 		if (currentInstances < maxInstances) {
-			cfOps.applications().scale(ScaleApplicationRequest.builder().name(appName).instances(getInstanceCount() + 1).build()).block();
+			cfOps.applications().scale(ScaleApplicationRequest.builder().name(appName).instances(currentInstances + 1).build()).block();
 			LOGGER.info(String.format("Incremented App Count to %s", currentInstances + 1));
 		} else {
 			LOGGER.info(String.format("Upper limit of %s Instances Reached. Could not scale up.", maxInstances));
@@ -65,7 +65,7 @@ public class InstanceBroker {
 	public void decrement() {
 		Integer currentInstances = getInstanceCount();
 		if (currentInstances > minInstances) {
-			cfOps.applications().scale(ScaleApplicationRequest.builder().name(appName).instances(getInstanceCount() - 1).build()).block();
+			cfOps.applications().scale(ScaleApplicationRequest.builder().name(appName).instances(currentInstances - 1).build()).block();
 			LOGGER.info(String.format("Decremented App Count to %s", currentInstances - 1));
 		} else {
 			LOGGER.info(String.format("Lower limit of %s Instances Reached. Could not scale down.", maxInstances));
