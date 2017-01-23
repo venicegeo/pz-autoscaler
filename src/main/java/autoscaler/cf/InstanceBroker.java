@@ -15,6 +15,12 @@
  **/
 package autoscaler.cf;
 
+import org.cloudfoundry.operations.DefaultCloudFoundryOperations;
+import org.cloudfoundry.operations.applications.ApplicationDetail;
+import org.cloudfoundry.operations.applications.GetApplicationRequest;
+import org.cloudfoundry.operations.applications.ScaleApplicationRequest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -26,17 +32,42 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class InstanceBroker {
+	@Value("${cf.appName}")
+	private String appName;
+	@Value("${scale.minInstances}")
+	private Integer minInstances;
+	@Value("${scale.maxInstances}")
+	private Integer maxInstances;
+	@Autowired
+	private DefaultCloudFoundryOperations cfOps;
+
 	/**
 	 * Increments the number of instances of the App by 1.
 	 */
 	public void increment() {
-
+		Integer currentInstances = getInstanceCount();
+		if (currentInstances < maxInstances) {
+			cfOps.applications().scale(ScaleApplicationRequest.builder().name(appName).instances(getInstanceCount() + 1).build());
+		}
 	}
 
 	/**
 	 * Decrements the number of instances of the App by 1.
 	 */
 	public void decrement() {
+		Integer currentInstances = getInstanceCount();
+		if (currentInstances > minInstances) {
+			cfOps.applications().scale(ScaleApplicationRequest.builder().name(appName).instances(getInstanceCount() - 1).build());
+		}
+	}
 
+	/**
+	 * Gets the current number of instances for the app.
+	 * 
+	 * @return App instances
+	 */
+	private Integer getInstanceCount() {
+		ApplicationDetail appDetails = cfOps.applications().get(GetApplicationRequest.builder().name(appName).build()).block();
+		return appDetails.getInstances();
 	}
 }

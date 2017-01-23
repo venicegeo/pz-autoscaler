@@ -16,9 +16,21 @@
 package autoscaler.poll;
 
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
+import javax.annotation.PostConstruct;
+
+import org.joda.time.DateTime;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.RestTemplate;
 
 /**
  * Handles HTTP communication with Piazza in order to collect metadata relevant to scaling. In this case, it queries for
@@ -29,13 +41,69 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class Pollster {
+	@Value("${scale.intervalSeconds}")
+	private Integer intervalSeconds;
+
+	private PollServiceTask pollTask = new PollServiceTask();
+	private Timer pollTimer = new Timer();
+
 	/**
-	 * Gets the Service metadata response from Piazza for the bound service. This metadata will contain, at least, the
-	 * number of Jobs in the queue.
-	 * 
-	 * @return Service metadata, including number of Jobs.
+	 * Begins scheduled polling of Service Metadata
 	 */
-	public ResponseEntity<Map> getServiceJobMetadata() {
-		return null;
+	@PostConstruct
+	public void startPolling() {
+		// Begin polling at the determined frequency after a short delay
+		pollTimer.schedule(pollTask, 5000, intervalSeconds * 1000);
+	}
+
+	/**
+	 * Halts scheduled polling.
+	 */
+	public void stopPolling() {
+		pollTimer.cancel();
+	}
+
+	/**
+	 * Repeated Task that will continuously query for the number of Jobs in the Service Queue, and feed those metrics
+	 * into the Collector.
+	 * 
+	 * @author Patrick.Doody
+	 */
+	@Component
+	public class PollServiceTask extends TimerTask {
+		@Value("${pz.serviceId}")
+		private String serviceId;
+		@Value("${pz.apiKey}")
+		private String apiKey;
+		@Value("${pz.hostUrl}")
+		private String pzHost;
+		@Value("${cf.space}")
+		private String space;
+
+		@Autowired
+		private RestTemplate restTemplate;
+		@Autowired
+		private MetricCollector metricCollector;
+
+		/**
+		 * Gets the Service metadata response from Piazza for the bound service. This metadata will contain, at least,
+		 * the number of Jobs in the queue.
+		 */
+		@Override
+		public void run() {
+			// Query Piazza for the Service Metadata
+			String url = String.format("%s/service/%s/metadata", pzHost, serviceId);
+			ParameterizedTypeReference<Map<String, Object>> typeRef = new ParameterizedTypeReference<Map<String, Object>>() {
+			};
+			try {
+				ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.GET, null, typeRef);
+				// Send data to the Metrics Collector
+				metricCollector.onMetricGathered(new DateTime(), Integer.parseInt(response.getBody().get("totalJobCount").toString()));
+			} catch (HttpClientErrorException | HttpServerErrorException exception) {
+				// Handle any HTTP Errors
+			} catch (NumberFormatException exception) {
+				// Handle Formatting or Parse errors
+			}
+		}
 	}
 }

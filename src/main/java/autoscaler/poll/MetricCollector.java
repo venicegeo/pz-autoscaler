@@ -28,14 +28,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class MetricCollector {
 	/**
-	 * Records the data from a poll of a Piazza Service Job queue.
+	 * Records the data from a poll of a Piazza Service Job queue, and determines if scaling is appropriate.
 	 * 
 	 * @param dateTime
 	 *            The time of the poll.
 	 * @param jobCount
 	 *            The number of Jobs in the queue at that time.
 	 */
-	public void record(DateTime dateTime, int jobCount) {
+	public void onMetricGathered(DateTime dateTime, int jobCount) {
 
 	}
 

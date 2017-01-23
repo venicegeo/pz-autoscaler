@@ -32,6 +32,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.web.client.RestTemplate;
 
 @SpringBootApplication
 @Configuration
@@ -39,6 +40,11 @@ import org.springframework.scheduling.annotation.EnableAsync;
 public class Application {
 	public static void main(String[] args) {
 		SpringApplication.run(Application.class, args); // NOSONAR
+	}
+
+	@Bean
+	RestTemplate restTemplate() {
+		return new RestTemplate();
 	}
 
 	@Bean
@@ -68,7 +74,7 @@ public class Application {
 
 	@Bean
 	DefaultCloudFoundryOperations cloudFoundryOperations(CloudFoundryClient cloudFoundryClient, DopplerClient dopplerClient,
-			UaaClient uaaClient, @Value("${cf.organization}") String organization, @Value("${SPACE}") String space) {
+			UaaClient uaaClient, @Value("${cf.organization}") String organization, @Value("${cf.space}") String space) {
 		return DefaultCloudFoundryOperations.builder().cloudFoundryClient(cloudFoundryClient).dopplerClient(dopplerClient)
 				.uaaClient(uaaClient).organization(organization).space(space).build();
 	}
